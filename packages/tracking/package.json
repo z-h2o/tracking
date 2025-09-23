@@ -1,0 +1,46 @@
+{
+  "name": "@tracking/tracking",
+  "version": "1.0.0",
+  "description": "前端埋点SDK",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@tracking/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "rollup": "^4.0.0",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-terser": "^0.4.3",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.6.2",
+    "@types/jest": "^29.5.5",
+    "@tracking/eslint-config": "workspace:*",
+    "@tracking/tsconfig": "workspace:*"
+  },
+  "keywords": [
+    "tracking",
+    "sdk",
+    "frontend",
+    "analytics"
+  ],
+  "author": "",
+  "license": "MIT"
+}

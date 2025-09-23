@@ -1,0 +1,38 @@
+{
+  "name": "@tracking/shared",
+  "version": "1.0.0",
+  "description": "埋点系统共享工具和类型定义",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "joi": "^17.9.2",
+    "moment": "^2.29.4",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.3",
+    "@tracking/eslint-config": "workspace:*",
+    "@tracking/tsconfig": "workspace:*"
+  },
+  "keywords": [
+    "tracking",
+    "shared",
+    "utilities",
+    "types"
+  ],
+  "author": "",
+  "license": "MIT"
+}

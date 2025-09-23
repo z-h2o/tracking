@@ -64,11 +64,11 @@
         
     </div>
     <script type="module">
-        import { TrackingSDK } from './track.js';
+        import { TrackingSDK } from '../src/index.js';
         
         // 初始化SDK
         const tracker = new TrackingSDK({
-            endpoint: 'http://localhost:3000/api/spm/spm',
+            endpoint: 'http://localhost:3000/api/tracking/spm',
             sender: 'jsonp', // 可选: jsonp, image, xhr, fetch
             debug: false,
             logToPage: true,

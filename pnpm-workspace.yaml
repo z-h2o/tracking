@@ -1,0 +1,5 @@
+packages:
+  # 应用项目
+  - 'apps/*'
+  # 公共包/配置
+  - 'packages/*'

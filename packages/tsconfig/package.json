@@ -1,0 +1,18 @@
+{
+  "name": "@tracking/tsconfig",
+  "version": "1.0.0",
+  "description": "TypeScript 共享配置",
+  "main": "base.json",
+  "files": [
+    "base.json",
+    "node.json",
+    "react.json"
+  ],
+  "keywords": [
+    "typescript",
+    "config",
+    "tracking"
+  ],
+  "author": "",
+  "license": "MIT"
+}

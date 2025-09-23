@@ -1,0 +1,140 @@
+// 全局样式重置
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// 自定义滚动条
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+// 工具类
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+
+.mt-0 {
+  margin-top: 0 !important;
+}
+
+// Element Plus 样式覆盖
+.el-menu {
+  border-right: none !important;
+}
+
+.el-menu-item {
+  height: 50px;
+  line-height: 50px;
+}
+
+.el-submenu__title {
+  height: 50px;
+  line-height: 50px;
+}
+
+// 卡片样式
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+  
+  .stat-card-title {
+    font-size: 14px;
+    color: #909399;
+    margin-bottom: 10px;
+  }
+  
+  .stat-card-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #303133;
+  }
+  
+  .stat-card-trend {
+    font-size: 12px;
+    margin-top: 5px;
+    
+    &.up {
+      color: #67c23a;
+    }
+    
+    &.down {
+      color: #f56c6c;
+    }
+  }
+}
+
+// 图表容器
+.chart-container {
+  width: 100%;
+  height: 400px;
+}
+
+// NProgress 样式覆盖
+#nprogress .bar {
+  background: #409eff !important;
+  height: 3px !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #409eff, 0 0 5px #409eff !important;
+}
