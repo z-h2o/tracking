@@ -60,10 +60,8 @@
         <h2>手动追踪</h2>
         <button onclick="manualTrack()">手动发送追踪事件</button>
         <button onclick="triggerError()">触发测试错误</button>
-        <button onclick="showStats()">查看统计信息</button>
-        <button onclick="enableDebug()">启用调试模式</button>
+        <button onclick="testViewTracking()">测试曝光追踪</button>
         
-        <div id="stats" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace;"></div>
     </div>
     <script type="module">
       console.log('123');
@@ -136,29 +134,26 @@
             // 触发Promise rejection错误
             Promise.reject(new Error('Promise rejection 测试错误'));
         };
-        
-        window.showStats = () => {
-            const stats = tracker.getStats();
-            document.getElementById('stats').innerHTML = `
-                <h3>SDK统计信息</h3>
-                <strong>基础统计:</strong><br>
-                总追踪数: ${stats.totalTracked}<br>
-                成功发送: ${stats.successCount}<br>
-                发送错误: ${stats.errorCount}<br>
-                最后发送时间: ${stats.lastSendTime ? new Date(stats.lastSendTime).toLocaleString() : '无'}<br>
-                <br>
-                <strong>错误统计:</strong><br>
-                JS错误: ${stats.errorStats.jsErrors}<br>
-                Promise错误: ${stats.errorStats.promiseRejections}<br>
-                资源错误: ${stats.errorStats.resourceErrors}<br>
-                网络错误: ${stats.errorStats.networkErrors}<br>
-                最后错误时间: ${stats.errorStats.lastErrorTime ? new Date(stats.errorStats.lastErrorTime).toLocaleString() : '无'}
-            `;
-        };
-        
-        window.enableDebug = () => {
-            tracker.enableDebug();
-            alert('调试模式已启用，追踪的元素将被高亮显示');
+
+        window.testViewTracking = () => {
+            // 动态创建一个曝光追踪元素
+            const testDiv = document.createElement('div');
+            testDiv.className = 'view-element';
+            testDiv.setAttribute('data-spm', 'test.dynamic.element');
+            testDiv.setAttribute('data-track-trigger', 'view');
+            testDiv.textContent = '动态创建的曝光追踪元素';
+            testDiv.style.marginTop = '20px';
+            testDiv.style.height = '100px';
+            testDiv.style.backgroundColor = '#ffeb3b';
+            testDiv.style.border = '2px solid #f57f17';
+            testDiv.style.display = 'flex';
+            testDiv.style.alignItems = 'center';
+            testDiv.style.justifyContent = 'center';
+            
+            // 添加到页面
+            document.querySelector('.container').appendChild(testDiv);
+            
+            console.log('已添加动态曝光追踪元素，请查看控制台输出');
         };
         
         // 页面卸载前发送剩余数据
