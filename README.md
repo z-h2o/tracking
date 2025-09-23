@@ -70,7 +70,53 @@ npm start
 
 ## API 文档
 
-### 埋点数据收集 API
+### SPM埋点数据收集 API（支持多种发送方式）
+
+#### 1. JSONP方式发送（推荐）
+
+**GET** `/api/spm/spm`
+
+支持JSONP跨域请求，兼容多种callback参数名
+
+参数:
+- `data`: JSON字符串（URL编码）
+- `callback`: JSONP回调函数名（也支持`jsonp`、`cb`）
+
+```javascript
+// 单条事件发送
+const data = {
+  event: 'button_click',
+  properties: {
+    button_text: '购买',
+    product_id: '12345'
+  }
+};
+
+const script = document.createElement('script');
+script.src = `http://localhost:3000/api/spm/spm?data=${encodeURIComponent(JSON.stringify(data))}&callback=myCallback`;
+document.head.appendChild(script);
+
+function myCallback(response) {
+  console.log(response);
+}
+```
+
+```javascript
+// 批量事件发送
+const batchData = [
+  {
+    event: 'page_view',
+    properties: { page: '/home' }
+  },
+  {
+    event: 'scroll',
+    properties: { depth: 50 }
+  }
+];
+
+const script = document.createElement('script');
+script.src = `http://localhost:3000/api/spm/spm?data=${encodeURIComponent(JSON.stringify(batchData))}&callback=myCallback`;
+```
 
 #### 1. 事件追踪
 

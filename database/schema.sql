@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- 事件表
 CREATE TABLE IF NOT EXISTS events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    event_id VARCHAR(100) NOT NULL COMMENT '事件唯一标识',
+    event_id VARCHAR(100) NOT NULL UNIQUE COMMENT '事件唯一标识',
     user_id VARCHAR(100) NOT NULL COMMENT '用户ID',
     session_id VARCHAR(100) COMMENT '会话ID',
     event_name VARCHAR(100) NOT NULL COMMENT '事件名称',
@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS event_properties (
     property_type VARCHAR(20) DEFAULT 'string' COMMENT '属性类型：string, number, boolean, object',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_event_id (event_id),
-    INDEX idx_property_key (property_key),
-    FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
+    INDEX idx_property_key (property_key)
 ) ENGINE=InnoDB COMMENT='事件属性表';
 
 -- 页面访问记录表

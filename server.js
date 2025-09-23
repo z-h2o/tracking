@@ -6,6 +6,7 @@ const { setupMiddleware, errorHandler, notFoundHandler } = require('./middleware
 // 导入路由
 const trackingRoutes = require('./routes/tracking');
 const analyticsRoutes = require('./routes/analytics');
+const spmTrackingRoutes = require('./routes/spmTracking');
 
 // 创建Express应用
 const app = express();
@@ -16,6 +17,7 @@ setupMiddleware(app);
 // 路由配置
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/spm', spmTrackingRoutes);
 
 // API根路由
 app.get('/api', (req, res) => {
@@ -42,6 +44,15 @@ app.get('/api', (req, res) => {
         retention: 'GET /api/analytics/retention/:cohortDate',
         errors: 'GET /api/analytics/errors',
         overview: 'GET /api/analytics/overview'
+      },
+      spm: {
+        track: 'POST /api/spm/spm',
+        batch: 'POST /api/spm/spm/batch',
+        jsonp: 'GET /api/spm/spm',
+        image: 'GET /api/spm/spm/image',
+        stats: 'GET /api/spm/spm/stats',
+        topElements: 'GET /api/spm/spm/top-elements',
+        health: 'GET /api/spm/spm/health'
       }
     },
     documentation: 'https://github.com/your-repo/tracking-backend/blob/main/README.md'

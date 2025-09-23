@@ -17,14 +17,14 @@ class TrackingService {
         [
           eventId,
           eventData.user_id,
-          eventData.session_id,
+          eventData.session_id || null,
           eventData.event_name,
-          eventData.event_category,
-          eventData.page_url,
-          eventData.page_title,
-          eventData.referrer,
-          eventData.ip_address,
-          eventData.user_agent,
+          eventData.event_category || null,
+          eventData.page_url || null,
+          eventData.page_title || null,
+          eventData.referrer || null,
+          eventData.ip_address || null,
+          eventData.user_agent || null,
           timestamp
         ]
       );
@@ -60,14 +60,14 @@ class TrackingService {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         pageViewData.user_id,
-        pageViewData.session_id,
+        pageViewData.session_id || null,
         pageViewData.page_url,
-        pageViewData.page_title,
-        pageViewData.referrer,
-        pageViewData.duration,
-        pageViewData.scroll_depth,
-        pageViewData.ip_address,
-        pageViewData.user_agent,
+        pageViewData.page_title || null,
+        pageViewData.referrer || null,
+        pageViewData.duration || 0,
+        pageViewData.scroll_depth || 0,
+        pageViewData.ip_address || null,
+        pageViewData.user_agent || null,
         timestamp
       ]
     );
@@ -85,13 +85,13 @@ class TrackingService {
         page_url, user_agent, timestamp) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        errorData.user_id,
-        errorData.session_id,
+        errorData.user_id || null,
+        errorData.session_id || null,
         errorData.error_type,
-        errorData.error_message,
-        errorData.error_stack,
-        errorData.page_url,
-        errorData.user_agent,
+        errorData.error_message || null,
+        errorData.error_stack || null,
+        errorData.page_url || null,
+        errorData.user_agent || null,
         timestamp
       ]
     );
@@ -111,9 +111,9 @@ class TrackingService {
        updated_at = CURRENT_TIMESTAMP`,
       [
         userData.user_id,
-        userData.device_id,
-        userData.user_agent,
-        userData.platform
+        userData.device_id || null,
+        userData.user_agent || null,
+        userData.platform || null
       ]
     );
     

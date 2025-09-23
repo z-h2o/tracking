@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>埋点SDK示例</title>
+    <style>
+        .debug-enabled {
+            outline: 2px solid #ff0000 !important;
+            background-color: rgba(255, 0, 0, 0.1) !important;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .view-element {
+            height: 100px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>埋点SDK使用示例</h1>
+        
+        <h2>点击追踪</h2>
+        <button class="button" data-spm="home.button.login" data-track-page="home">
+            登录按钮
+        </button>
+        
+        <button class="button" data-spm="home.button.register" data-track-custom="premium">
+            注册按钮
+        </button>
+        
+        <h2>曝光追踪</h2>
+        <div class="view-element" data-spm="home.banner.main" data-track-trigger="view">
+            主要横幅（会自动追踪曝光）
+        </div>
+        
+        <div class="view-element" data-spm="home.banner.secondary" data-track-trigger="view" data-track-delay="1000">
+            延迟横幅（1秒后追踪）
+        </div>
+        
+        <h2>手动追踪</h2>
+        <button onclick="manualTrack()">手动发送追踪事件</button>
+        <button onclick="triggerError()">触发测试错误</button>
+        <button onclick="showStats()">查看统计信息</button>
+        <button onclick="enableDebug()">启用调试模式</button>
+        
+        <div id="stats" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace;"></div>
+    </div>
+    <script type="module">
+      console.log('123');
+      
+        import { TrackingSDK } from './track.js';
+        
+        // 初始化SDK
+        const tracker = new TrackingSDK({
+            endpoint: 'http://localhost:3000/api/spm/spm',
+            sender: 'jsonp', // 可选: jsonp, image, xhr, fetch
+            debug: false,
+            logToPage: true,
+            
+            // 错误监控配置
+            errorMonitoring: {
+                enabled: true,
+                captureJSErrors: true,
+                capturePromiseRejections: true,
+                captureResourceErrors: true,
+                captureNetworkErrors: true,
+                maxErrorsPerSession: 20,
+                errorSamplingRate: 1.0,
+                ignoreErrors: ['Script error', /network/i],
+                beforeErrorSend: (errorData) => {
+                    console.log('准备发送错误:', errorData);
+                    return errorData;
+                }
+            },
+            
+            // 数据处理
+            dataProcessor: (data) => {
+                // 可以在这里添加通用字段
+                data.appVersion = '1.0.0';
+                data.userId = 'user123';
+                return data;
+            },
+            
+            beforeSend: (data) => {
+                console.log('准备发送:', data);
+                return data;
+            },
+            
+            afterSend: (response, data) => {
+                console.log('发送成功:', response);
+            },
+            
+            onError: (error, data) => {
+                console.error('发送失败:', error);
+            }
+        });
+        
+        // 启动SDK
+        tracker.start();
+        
+        // 全局函数供按钮调用 - 手动挂载到window对象
+        window.manualTrack = () => {
+            tracker.sendTrack({
+                event: 'button_click',
+                action: 'manual_test',
+                value: Math.floor(Math.random() * 100)
+            });
+        };
+        
+        window.triggerError = () => {
+            // 触发JavaScript错误进行测试
+            setTimeout(() => {
+                throw new Error('这是一个测试错误');
+            }, 100);
+            
+            // 触发Promise rejection错误
+            Promise.reject(new Error('Promise rejection 测试错误'));
+        };
+        
+        window.showStats = () => {
+            const stats = tracker.getStats();
+            document.getElementById('stats').innerHTML = `
+                <h3>SDK统计信息</h3>
+                <strong>基础统计:</strong><br>
+                总追踪数: ${stats.totalTracked}<br>
+                成功发送: ${stats.successCount}<br>
+                发送错误: ${stats.errorCount}<br>
+                最后发送时间: ${stats.lastSendTime ? new Date(stats.lastSendTime).toLocaleString() : '无'}<br>
+                <br>
+                <strong>错误统计:</strong><br>
+                JS错误: ${stats.errorStats.jsErrors}<br>
+                Promise错误: ${stats.errorStats.promiseRejections}<br>
+                资源错误: ${stats.errorStats.resourceErrors}<br>
+                网络错误: ${stats.errorStats.networkErrors}<br>
+                最后错误时间: ${stats.errorStats.lastErrorTime ? new Date(stats.errorStats.lastErrorTime).toLocaleString() : '无'}
+            `;
+        };
+        
+        window.enableDebug = () => {
+            tracker.enableDebug();
+            alert('调试模式已启用，追踪的元素将被高亮显示');
+        };
+        
+        // 页面卸载前发送剩余数据
+        window.addEventListener('beforeunload', () => {
+            tracker.flush();
+        });
+        
+        // 导出tracker供调试使用
+        window.tracker = tracker;
+        
+        console.log('埋点SDK已初始化并启动');
+        console.log('可用的公共方法:', {
+            start: '启动SDK',
+            stop: '停止SDK', 
+            track: '手动追踪事件',
+            sendTrack: '发送追踪数据',
+            clear: '清空队列',
+            updateConfig: '更新配置',
+            getStats: '获取统计信息',
+            enableDebug: '启用调试模式',
+            flush: '立即发送队列中的数据'
+        });
+    </script>
+</body>
+</html>

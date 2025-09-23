@@ -27,7 +27,7 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.6.0",
     "rate-limiter-flexible": "^3.0.3",
-    "uuid": "^13.0.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "jest": "^29.6.2",
