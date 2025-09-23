@@ -204,15 +204,9 @@ router.get('/events', asyncHandler(async (req, res) => {
           const trackingEvent = new TrackingEvent(normalizedEvents[0]);
           await trackingEvent.save();
           
-          const response = {
-            success: true,
-            message: 'Event tracked successfully',
-            data: { id: trackingEvent.id }
-          };
-          
           if (isJSONPTracking) {
-            // JSONP 响应
-            res.type('text/javascript').send(`${callback}(${JSON.stringify(response)})`);
+            // JSONP 响应 - 不返回任何内容，避免回调函数错误
+            res.type('text/javascript').status(200).end();
           } else {
             // 图片追踪响应：返回1x1透明PNG图片
             const transparentPixel = Buffer.from(
@@ -234,15 +228,9 @@ router.get('/events', asyncHandler(async (req, res) => {
         } else {
           const result = await TrackingEvent.saveBatch(normalizedEvents);
           
-          const response = {
-            success: true,
-            message: 'Batch events tracked successfully',
-            data: { insertedCount: result.affectedRows }
-          };
-          
           if (isJSONPTracking) {
-            // JSONP 响应
-            res.type('text/javascript').send(`${callback}(${JSON.stringify(response)})`);
+            // JSONP 响应 - 不返回任何内容，避免回调函数错误
+            res.type('text/javascript').status(200).end();
           } else {
             // 图片追踪响应：返回1x1透明PNG图片
             const transparentPixel = Buffer.from(
@@ -263,14 +251,9 @@ router.get('/events', asyncHandler(async (req, res) => {
           }
         }
       } catch (error) {
-        const errorResponse = {
-          success: false,
-          error: 'Invalid data format',
-          message: error.message
-        };
-        
         if (isJSONPTracking) {
-          res.type('text/javascript').send(`${callback}(${JSON.stringify(errorResponse)})`);
+          // JSONP 错误响应也不返回任何内容，避免回调函数错误
+          res.type('text/javascript').status(200).end();
         } else {
           // 图片追踪错误时也返回透明图片，避免前端显示破损图片
           const transparentPixel = Buffer.from(

@@ -36,6 +36,8 @@ const tracker = new TrackingSDK({
   
 });
 
+window.tracker = tracker;
+
 tracker.start();
 
 

@@ -19,7 +19,7 @@ export class TrackingSDK {
       sender: 'jsonp',
       jsonp: {
         callbackParam: 'callback',
-        timeout: 50
+        timeout: 3000
       },
       storage: {
         enabled: true,
@@ -223,15 +223,14 @@ export class TrackingSDK {
   // 私有方法：创建JSONP发送器
   #createJSONPSender() {
     return (url, data) => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const callbackName = 'tracking_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2);
         const script = document.createElement('script');
         const timeout = setTimeout(() => {
           cleanup();
-          reject('JSONP request timeout');
           // JSONP失败时自动降级到图片请求
           if (this.#config.fallbackSender) {
-            this.#senders.image(url, data).then(resolve).catch(reject);
+            this.#senders.image(url, data).then(resolve)
           }
         }, this.#config.jsonp.timeout);
 
@@ -260,10 +259,9 @@ export class TrackingSDK {
         
         script.onerror = () => {
           cleanup();
-          reject('JSONP request failed');
           // JSONP失败时自动降级到图片请求
           if (this.#config.fallbackSender) {
-            this.#senders.image(url, data).then(resolve).catch(reject);
+            this.#senders.image(url, data).then(resolve)
           }
         };
 
@@ -275,7 +273,7 @@ export class TrackingSDK {
   // 私有方法：创建图片发送器
   #createImageSender() {
     return (url, data) => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const img = new Image();
         
         // 图片埋点的超时时间设置更短，因为我们主要关心请求是否发出
@@ -518,7 +516,7 @@ export class TrackingSDK {
 
   // 私有方法：扫描浏览追踪元素
   #scanForViewTrackingElements(root) {
-    const elements = root.querySelectorAll('[data-spm][data-track-trigger="view"]');
+    const elements = root.querySelectorAll('[data-track-trigger="view"]');
     elements.forEach((element) => {
       const intersectionObserver = this.#observers.get('intersection');
       if (intersectionObserver) {
@@ -705,6 +703,11 @@ export class TrackingSDK {
         this.#handleSendSuccess(response, items, Date.now() - startTime);
       })
       .catch(error => {
+        console.log(
+          '%c error: ',
+          'font-size:22px;color:#fff;background:#1ca94b',
+          error
+        )
         this.#handleSendError(error, items);
       })
       .finally(() => {

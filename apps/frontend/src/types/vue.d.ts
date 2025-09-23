@@ -13,4 +13,9 @@ declare global {
   }
 }
 
+declare global {
+  interface Window {
+    tracker: typeof tracker;
+  }
+}
 export {}
