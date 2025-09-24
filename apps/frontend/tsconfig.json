@@ -20,7 +20,7 @@
       "@/*": ["src/*"],
       "@shared/*": ["../../packages/shared/src/*"],
       "@tracking/*": ["../../packages/tracking/src/*"],
-      "@tracking": ["../../packages/tracking/src/index.js"]
+      "@tracking": ["../../packages/tracking/src/index.ts"]
     },
     "types": ["vite/client", "element-plus/global", "node"]
   },

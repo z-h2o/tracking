@@ -3,16 +3,16 @@
     <h1>埋点SDK使用示例</h1>
     
     <h2>点击追踪</h2>
-    <button class="button" data-spm="home.button.login" data-track-page="home">
+    <button class="button login_button" data-spm="home.button.login" data-track-page="home">
         登录按钮
     </button>
     
-    <button class="button" data-spm="home.button.register" data-track-custom="premium">
+    <button class="button register_button" data-spm="home.button.register" data-track-custom="premium">
         注册按钮
     </button>
     
     <h2>曝光追踪</h2>
-    <div class="view-element" data-spm="home.banner.main" data-track-trigger="view">
+    <div class="view-element main_banner" data-spm="home.banner.main" data-track-trigger="view">
         主要横幅（会自动追踪曝光）
     </div>
     
@@ -33,7 +33,7 @@ const container = ref<HTMLDivElement | null>(null);
 
 const manualTrack = () => {
   window.tracker.sendTrack({
-    event: 'button_click',
+    user_id: Math.random().toString(36).substring(2, 15),
     action: 'manual_test',
     value: Math.floor(Math.random() * 100)
   });
@@ -71,31 +71,33 @@ const testViewTracking = () => {
 
 <style scoped>
 .debug-enabled {
-    outline: 2px solid #ff0000 !important;
-    background-color: rgba(255, 0, 0, 0.1) !important;
+  outline: 2px solid #ff0000 !important;
+  background-color: rgba(255, 0, 0, 0.1) !important;
 }
 .container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
+  height: 100vh;
+  overflow: auto;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
 }
 .button {
-    display: inline-block;
-    padding: 10px 20px;
-    margin: 10px;
-    background-color: #007bff;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    cursor: pointer;
+  display: inline-block;
+  padding: 10px 20px;
+  margin: 10px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 .view-element {
-    height: 100px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 20px 0;
+  height: 100px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
 }
 </style>

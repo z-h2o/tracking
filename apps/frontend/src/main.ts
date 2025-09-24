@@ -21,8 +21,7 @@ const tracker = new TrackingSDK({
     errorSamplingRate: 1.0,
     ignoreErrors: ['Script error', /network/i],
     beforeErrorSend: (errorData) => {
-        console.log('准备发送错误:', errorData);
-        return errorData;
+      return errorData;
     }
   },
   
