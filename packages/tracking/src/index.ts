@@ -228,9 +228,10 @@ export class TrackingSDK {
       user: this.getUser(),
       sessionId: this.getSessionId()
     };
+    const errorTrackingData = this.config.dataProcessor(trackingData);
 
-    this.sendImmediately(trackingData);
-    this.log('warn', 'Error tracked:', trackingData);
+    this.sendImmediately(errorTrackingData);
+    this.log('warn', 'Error tracked:', errorTrackingData);
   }
 
   // 私有方法：设置发送器
@@ -659,7 +660,7 @@ export class TrackingSDK {
 
   // 公共API：主动发送追踪数据
   sendTrack(data: any = {}) {
-    const value = this.buildTrackingData(null, null, data);
+    const value = Object.assign({ trigger: 'manual' }, this.buildTrackingData(null, null, data));
     this.sendImmediately(value);
   }
 
