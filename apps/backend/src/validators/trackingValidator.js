@@ -8,7 +8,8 @@ const baseValidationRules = {
   timestamp: Joi.number().integer().positive().required(),
   url: Joi.string().uri().max(2000).required(),
   userAgent: Joi.string().max(1000).optional().allow(null),
-  appVersion: Joi.string().max(50).optional().allow(null)
+  appVersion: Joi.string().max(50).optional().allow(null),
+  sender: Joi.string().valid('jsonp', 'image', 'xhr', 'fetch').optional().default('xhr')
 };
 
 // SPM验证规则
@@ -66,7 +67,7 @@ const trackingEventSchema = Joi.object({
   
   // 事件类型
   eventType: Joi.string().valid('click', 'view', 'manual', 'page_view').optional(),
-  trigger: Joi.string().valid('click', 'view', 'manual').optional(),
+  trigger: Joi.string().max(50).optional(), // 允许任意字符串类型的trigger
   triggerType: Joi.string().max(50).optional(),
   
   // 事件数据
@@ -179,29 +180,36 @@ const createValidator = (schema, source = 'body') => {
 export const normalizeTrackingData = (data) => {
   const normalized = { ...data };
   
+  // 标准化基础信息
+  if (!normalized.category) {
+    normalized.category = 'default';
+  }
+  
   // 标准化时间戳
-  if (normalized.timestamp) {
+  if (normalized.timestamp && !normalized.eventTimestamp) {
     normalized.eventTimestamp = normalized.timestamp;
-    delete normalized.timestamp;
   }
   
   // 标准化事件类型
-  if (normalized.trigger && !normalized.eventType) {
-    normalized.eventType = normalized.trigger === 'manual' ? 'manual' : 
-                           normalized.trigger === 'view' ? 'view' : 'click';
+  if (normalized.trigger && !normalized.triggerType) {
+    normalized.triggerType = normalized.trigger;
   }
   
   // 标准化页面信息
+  if (normalized.url && !normalized.pageUrl) {
+    normalized.pageUrl = normalized.url;
+  }
+  
   if (normalized.page) {
     if (normalized.page.title && !normalized.pageTitle) {
       normalized.pageTitle = normalized.page.title;
     }
-    if (normalized.page.referrer && !normalized.referrer) {
-      normalized.referrer = normalized.page.referrer;
+    if (normalized.page.referrer && !normalized.pageReferrer) {
+      normalized.pageReferrer = normalized.page.referrer;
     }
     if (normalized.page.viewport) {
-      normalized.viewportWidth = normalized.page.viewport.width;
-      normalized.viewportHeight = normalized.page.viewport.height;
+      if (!normalized.viewportWidth) normalized.viewportWidth = normalized.page.viewport.width;
+      if (!normalized.viewportHeight) normalized.viewportHeight = normalized.page.viewport.height;
     }
   }
   
@@ -210,34 +218,89 @@ export const normalizeTrackingData = (data) => {
     if (normalized.user.userAgent && !normalized.userAgent) {
       normalized.userAgent = normalized.user.userAgent;
     }
-    if (normalized.user.language && !normalized.browserLanguage) {
-      normalized.browserLanguage = normalized.user.language;
+    if (normalized.user.language && !normalized.userLanguage) {
+      normalized.userLanguage = normalized.user.language;
     }
-    if (normalized.user.timezone && !normalized.timezone) {
-      normalized.timezone = normalized.user.timezone;
+    if (normalized.user.timezone && !normalized.userTimezone) {
+      normalized.userTimezone = normalized.user.timezone;
     }
   }
   
   // 标准化元素信息
   if (normalized.element) {
-    normalized.elementTag = normalized.element.tagName;
-    normalized.elementId = normalized.element.id;
-    normalized.elementClass = normalized.element.className;
-    normalized.elementText = normalized.element.text;
-    normalized.elementAttributes = normalized.element.attributes;
+    if (!normalized.elementTagName) normalized.elementTagName = normalized.element.tagName;
+    if (!normalized.elementClassName) normalized.elementClassName = normalized.element.className;
+    if (!normalized.elementId) normalized.elementId = normalized.element.id;
+    if (!normalized.elementText) normalized.elementText = normalized.element.text;
+    if (!normalized.elementAttributes) normalized.elementAttributes = normalized.element.attributes;
   }
   
   // 标准化位置信息
   if (normalized.position) {
-    normalized.elementX = normalized.position.x;
-    normalized.elementY = normalized.position.y;
-    normalized.elementWidth = normalized.position.width;
-    normalized.elementHeight = normalized.position.height;
+    if (!normalized.positionX) normalized.positionX = normalized.position.x;
+    if (!normalized.positionY) normalized.positionY = normalized.position.y;
+    if (!normalized.positionWidth) normalized.positionWidth = normalized.position.width;
+    if (!normalized.positionHeight) normalized.positionHeight = normalized.position.height;
   }
   
-  // 标准化URL
+  return normalized;
+};
+
+// 标准化错误数据
+export const normalizeErrorData = (data) => {
+  const normalized = { ...data };
+  
+  // 标准化基础信息
+  normalized.category = 'error';
+  
+  // 标准化时间戳
+  if (normalized.timestamp && !normalized.errorTimestamp) {
+    normalized.errorTimestamp = normalized.timestamp;
+  }
+  
+  // 标准化错误信息
+  if (normalized.type && !normalized.errorType) {
+    normalized.errorType = normalized.type;
+  }
+  if (normalized.message && !normalized.errorMessage) {
+    normalized.errorMessage = normalized.message;
+  }
+  if (normalized.reason && !normalized.errorReason) {
+    normalized.errorReason = normalized.reason;
+  }
+  if (normalized.stack && !normalized.errorStack) {
+    normalized.errorStack = normalized.stack;
+  }
+  
+  // 标准化页面信息
   if (normalized.url && !normalized.pageUrl) {
     normalized.pageUrl = normalized.url;
+  }
+  
+  if (normalized.page) {
+    if (normalized.page.title && !normalized.pageTitle) {
+      normalized.pageTitle = normalized.page.title;
+    }
+    if (normalized.page.referrer && !normalized.pageReferrer) {
+      normalized.pageReferrer = normalized.page.referrer;
+    }
+    if (normalized.page.viewport) {
+      if (!normalized.viewportWidth) normalized.viewportWidth = normalized.page.viewport.width;
+      if (!normalized.viewportHeight) normalized.viewportHeight = normalized.page.viewport.height;
+    }
+  }
+  
+  // 标准化用户信息
+  if (normalized.user) {
+    if (normalized.user.userAgent && !normalized.userAgent) {
+      normalized.userAgent = normalized.user.userAgent;
+    }
+    if (normalized.user.language && !normalized.userLanguage) {
+      normalized.userLanguage = normalized.user.language;
+    }
+    if (normalized.user.timezone && !normalized.userTimezone) {
+      normalized.userTimezone = normalized.user.timezone;
+    }
   }
   
   return normalized;
@@ -262,5 +325,6 @@ export default {
   validateBatchTrackingEvents,
   validateErrorLog,
   validateQueryParams,
-  normalizeTrackingData
+  normalizeTrackingData,
+  normalizeErrorData
 };

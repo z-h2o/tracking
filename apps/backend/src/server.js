@@ -10,6 +10,7 @@ import { basicRateLimit } from './middlewares/rateLimiter.js';
 
 // 导入路由
 import trackingRoutes from './routes/tracking.js';
+import eventsRoutes from './routes/events.js';
 import analyticsRoutes from './routes/analytics.js';
 import healthRoutes from './routes/health.js';
 
@@ -58,6 +59,7 @@ app.use('/health', healthRoutes);
 
 // API路由
 app.use('/api/tracking', trackingRoutes);
+app.use('/api/events', eventsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // 根路径
@@ -78,10 +80,18 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     documentation: '/api/docs',
     endpoints: {
+      events: {
+        'POST /api/events/collect': 'Universal event collection (auto-routing by category)',
+        'POST /api/events/events': 'Submit tracking events',
+        'POST /api/events/errors': 'Submit error logs',
+        'GET /api/events/events': 'Query tracking events (supports JSONP/image tracking)',
+        'GET /api/events/sessions/:sessionId': 'Get session details',
+        'GET /api/events/sessions/user/:userId': 'Get user sessions'
+      },
       tracking: {
-        'POST /api/tracking/events': 'Submit tracking events',
-        'POST /api/tracking/errors': 'Submit error logs',
-        'GET /api/tracking/events': 'Query tracking events'
+        'POST /api/tracking/events': 'Submit tracking events (legacy)',
+        'POST /api/tracking/errors': 'Submit error logs (legacy)',
+        'GET /api/tracking/events': 'Query tracking events (legacy)'
       },
       analytics: {
         'GET /api/analytics/dashboard': 'Get dashboard statistics',

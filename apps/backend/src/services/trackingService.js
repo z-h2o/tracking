@@ -1,9 +1,92 @@
 import TrackingEvent from '../models/TrackingEvent.js';
 import ErrorLog from '../models/ErrorLog.js';
-import { normalizeTrackingData } from '../validators/trackingValidator.js';
+import UserSession from '../models/UserSession.js';
+import { normalizeTrackingData, normalizeErrorData } from '../validators/trackingValidator.js';
 import logger from '../middlewares/logger.js';
 
 export class TrackingService {
+  
+  /**
+   * 统一事件处理（根据category自动路由）
+   */
+  static async processUniversalEvent(eventData) {
+    try {
+      const category = eventData.category || 'default';
+      
+      if (category === 'error') {
+        return await this.processError(eventData);
+      } else {
+        return await this.processEvent(eventData);
+      }
+    } catch (error) {
+      logger.error('Failed to process universal event', {
+        error: error.message,
+        eventData,
+        category: eventData.category
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 批量处理统一事件
+   */
+  static async processBatchUniversalEvents(eventsData) {
+    try {
+      const trackingEvents = [];
+      const errorEvents = [];
+      
+      // 分类事件
+      eventsData.forEach(eventData => {
+        const category = eventData.category || 'default';
+        if (category === 'error') {
+          errorEvents.push(eventData);
+        } else {
+          trackingEvents.push(eventData);
+        }
+      });
+      
+      const results = [];
+      
+      // 批量处理普通事件
+      if (trackingEvents.length > 0) {
+        const trackingResult = await this.processBatchEvents(trackingEvents);
+        results.push({
+          type: 'tracking',
+          count: trackingEvents.length,
+          result: trackingResult
+        });
+      }
+      
+      // 批量处理错误事件
+      if (errorEvents.length > 0) {
+        const errorResults = [];
+        for (const errorData of errorEvents) {
+          const errorResult = await this.processError(errorData);
+          errorResults.push(errorResult);
+        }
+        results.push({
+          type: 'error',
+          count: errorEvents.length,
+          results: errorResults
+        });
+      }
+      
+      logger.info('Batch universal events processed successfully', {
+        totalEvents: eventsData.length,
+        trackingEvents: trackingEvents.length,
+        errorEvents: errorEvents.length
+      });
+      
+      return results;
+    } catch (error) {
+      logger.error('Failed to process batch universal events', {
+        error: error.message,
+        batchSize: eventsData.length
+      });
+      throw error;
+    }
+  }
   
   /**
    * 处理单个追踪事件
@@ -58,8 +141,15 @@ export class TrackingService {
    */
   static async processError(errorData) {
     try {
-      const errorLog = new ErrorLog(errorData);
+      const normalizedData = normalizeErrorData(errorData);
+      const errorLog = new ErrorLog(normalizedData);
       await errorLog.save();
+      
+      // 更新会话错误计数
+      await this.updateUserSession(errorLog.sessionId, {
+        errorsCount: 1,
+        lastEvent: normalizedData
+      });
       
       logger.info('Error log processed successfully', {
         errorId: errorLog.id,
@@ -352,6 +442,121 @@ export class TrackingService {
       logger.error('Failed to analyze session', {
         error: error.message,
         sessionId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 更新用户会话
+   */
+  static async updateUserSession(sessionId, updateData) {
+    try {
+      let session = await UserSession.findBySessionId(sessionId);
+      const lastEvent = updateData.lastEvent;
+      const timestamp = lastEvent.eventTimestamp || lastEvent.errorTimestamp || Date.now();
+      
+      if (!session) {
+        // 创建新会话
+        session = new UserSession({
+          sessionId: sessionId,
+          userId: lastEvent.userId,
+          appVersion: lastEvent.appVersion,
+          sessionStartTime: timestamp,
+          lastActivityTime: timestamp,
+          pageViewsCount: updateData.pageViewsCount || 0,
+          eventsCount: updateData.eventsCount || 0,
+          errorsCount: updateData.errorsCount || 0,
+          uniquePagesCount: updateData.uniquePages ? updateData.uniquePages.size : 0,
+          entryPageUrl: lastEvent.pageUrl,
+          entryPageTitle: lastEvent.pageTitle,
+          entryReferrer: lastEvent.pageReferrer,
+          exitPageUrl: lastEvent.pageUrl,
+          exitPageTitle: lastEvent.pageTitle,
+          userAgent: lastEvent.userAgent,
+          userLanguage: lastEvent.userLanguage,
+          userTimezone: lastEvent.userTimezone,
+          viewportWidth: lastEvent.viewportWidth,
+          viewportHeight: lastEvent.viewportHeight,
+          deviceType: this.inferDeviceType(lastEvent.userAgent),
+          isActive: true,
+          isBounce: (updateData.uniquePages ? updateData.uniquePages.size : 0) <= 1
+        });
+        
+        logger.info('New user session created', {
+          sessionId,
+          userId: lastEvent.userId
+        });
+      } else {
+        // 更新现有会话
+        session.sessionEndTime = timestamp;
+        session.lastActivityTime = timestamp;
+        session.sessionDuration = Math.round((timestamp - session.sessionStartTime) / 1000);
+        session.pageViewsCount += updateData.pageViewsCount || 0;
+        session.eventsCount += updateData.eventsCount || 0;
+        session.errorsCount += updateData.errorsCount || 0;
+        
+        if (updateData.uniquePages) {
+          session.uniquePagesCount = updateData.uniquePages.size;
+        }
+        
+        session.exitPageUrl = lastEvent.pageUrl;
+        session.exitPageTitle = lastEvent.pageTitle;
+        session.isBounce = session.uniquePagesCount <= 1;
+        
+        logger.debug('User session updated', {
+          sessionId,
+          eventsCount: session.eventsCount,
+          errorsCount: session.errorsCount
+        });
+      }
+      
+      await session.save();
+      return session;
+    } catch (error) {
+      logger.error('Failed to update user session', {
+        error: error.message,
+        sessionId
+      });
+      // 不抛出错误，避免影响主要的事件处理流程
+    }
+  }
+
+  /**
+   * 获取用户会话统计
+   */
+  static async getSessionStats(startDate, endDate) {
+    try {
+      const stats = await UserSession.getSessionStats(startDate, endDate);
+      
+      logger.info('Session stats retrieved successfully', {
+        dateRange: `${startDate} - ${endDate}`,
+        totalSessions: stats.total_sessions
+      });
+      
+      return stats;
+    } catch (error) {
+      logger.error('Failed to get session stats', {
+        error: error.message,
+        startDate,
+        endDate
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 清理过期会话
+   */
+  static async cleanupExpiredSessions() {
+    try {
+      // 更新非活跃会话状态
+      await UserSession.updateActiveStatus();
+      
+      logger.info('Expired sessions cleanup completed');
+    } catch (error) {
+      logger.error('Failed to cleanup expired sessions', {
+        error: error.message
       });
       throw error;
     }

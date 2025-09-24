@@ -3,67 +3,72 @@ import { query, transaction } from '../config/database.js';
 export class ErrorLog {
   constructor(data = {}) {
     this.id = data.id;
+    
+    // 基础信息
     this.sessionId = data.session_id || data.sessionId;
     this.userId = data.user_id || data.userId;
-    this.errorType = data.error_type || data.errorType;
+    this.appVersion = data.app_version || data.appVersion;
+    this.category = data.category || 'error';
+    this.sender = data.sender || 'xhr'; // 数据上报方式：jsonp, image, xhr, fetch
+    
+    // 时间戳
+    this.errorTimestamp = data.error_timestamp || data.errorTimestamp || data.timestamp;
+    this.createdAt = data.created_at || data.createdAt;
+    this.updatedAt = data.updated_at || data.updatedAt;
     
     // 错误信息
-    this.errorMessage = data.error_message || data.errorMessage;
-    this.errorStack = data.error_stack || data.errorStack;
-    this.errorFilename = data.error_filename || data.errorFilename;
-    this.errorLineno = data.error_lineno || data.errorLineno;
-    this.errorColno = data.error_colno || data.errorColno;
+    this.errorType = data.error_type || data.errorType || data.type;
+    this.errorMessage = data.error_message || data.errorMessage || data.message;
+    this.errorReason = data.error_reason || data.errorReason || data.reason;
+    this.errorStack = data.error_stack || data.errorStack || data.stack;
     
     // 页面信息
-    this.pageUrl = data.page_url || data.pageUrl;
-    this.pageTitle = data.page_title || data.pageTitle;
-    this.referrer = data.referrer;
+    this.pageUrl = data.page_url || data.pageUrl || data.url;
+    this.pageTitle = data.page_title || data.pageTitle || data.page?.title;
+    this.pageReferrer = data.page_referrer || data.pageReferrer || data.page?.referrer;
+    this.viewportWidth = data.viewport_width || data.viewportWidth || data.page?.viewport?.width;
+    this.viewportHeight = data.viewport_height || data.viewportHeight || data.page?.viewport?.height;
     
-    // 浏览器信息
-    this.userAgent = data.user_agent || data.userAgent;
-    this.browserLanguage = data.browser_language || data.browserLanguage;
-    this.timezone = data.timezone;
-    
-    // 设备信息
-    this.deviceType = data.device_type || data.deviceType;
-    this.osName = data.os_name || data.osName;
-    this.browserName = data.browser_name || data.browserName;
-    
-    // 业务信息
-    this.appVersion = data.app_version || data.appVersion;
-    this.customData = data.custom_data || data.customData;
+    // 用户环境信息
+    this.userAgent = data.user_agent || data.userAgent || data.user?.userAgent;
+    this.userLanguage = data.user_language || data.userLanguage || data.user?.language;
+    this.userTimezone = data.user_timezone || data.userTimezone || data.user?.timezone;
     
     // 错误级别和状态
     this.errorLevel = data.error_level || data.errorLevel || 'medium';
     this.resolved = data.resolved || false;
-    
-    // 时间戳
-    this.errorTimestamp = data.error_timestamp || data.errorTimestamp;
-    this.createdAt = data.created_at || data.createdAt;
-    this.updatedAt = data.updated_at || data.updatedAt;
   }
 
   // 保存错误日志
   async save() {
     const sql = `
       INSERT INTO error_logs (
-        session_id, user_id, error_type, error_message, error_stack, 
-        error_filename, error_lineno, error_colno,
-        page_url, page_title, referrer,
-        user_agent, browser_language, timezone,
-        device_type, os_name, browser_name,
-        app_version, custom_data, error_level, error_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        session_id, user_id, app_version, category, sender,
+        error_timestamp,
+        error_type, error_message, error_reason, error_stack,
+        page_url, page_title, page_referrer, viewport_width, viewport_height,
+        user_agent, user_language, user_timezone,
+        error_level
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // 确保所有undefined值转换为null
+    const toNull = (value) => value === undefined ? null : value;
+
     const params = [
-      this.sessionId, this.userId, this.errorType, this.errorMessage, this.errorStack,
-      this.errorFilename, this.errorLineno, this.errorColno,
-      this.pageUrl, this.pageTitle, this.referrer,
-      this.userAgent, this.browserLanguage, this.timezone,
-      this.deviceType, this.osName, this.browserName,
-      this.appVersion, this.customData ? JSON.stringify(this.customData) : null, 
-      this.errorLevel, this.errorTimestamp
+      // 基础信息
+      toNull(this.sessionId), toNull(this.userId), toNull(this.appVersion), toNull(this.category), toNull(this.sender),
+      // 时间戳
+      toNull(this.errorTimestamp),
+      // 错误信息
+      toNull(this.errorType), toNull(this.errorMessage), toNull(this.errorReason), toNull(this.errorStack),
+      // 页面信息
+      toNull(this.pageUrl), toNull(this.pageTitle), toNull(this.pageReferrer), 
+      toNull(this.viewportWidth), toNull(this.viewportHeight),
+      // 用户环境信息
+      toNull(this.userAgent), toNull(this.userLanguage), toNull(this.userTimezone),
+      // 错误级别
+      toNull(this.errorLevel)
     ];
 
     const result = await query(sql, params);

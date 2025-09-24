@@ -5,7 +5,8 @@ import {
   validateBatchTrackingEvents, 
   validateErrorLog,
   validateQueryParams,
-  normalizeTrackingData 
+  normalizeTrackingData,
+  normalizeErrorData 
 } from '../validators/trackingValidator.js';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import TrackingEvent from '../models/TrackingEvent.js';
@@ -13,15 +14,40 @@ import ErrorLog from '../models/ErrorLog.js';
 
 const router = express.Router();
 
+// 智能检测数据上报方式
+function detectSender(req, eventData) {
+  // 如果前端已经明确指定了sender，直接使用
+  if (eventData.sender && ['jsonp', 'image', 'xhr', 'fetch'].includes(eventData.sender)) {
+    return eventData.sender;
+  }
+  
+  // 根据请求特征自动检测
+  const { callback } = req.query;
+  const contentType = req.headers['content-type'] || '';
+  const secFetchDest = req.headers['sec-fetch-dest'] || '';
+  
+  if (callback) {
+    return 'jsonp';
+  } else if (secFetchDest === 'image' || req.query.t) {
+    return 'image';
+  } else if (req.method === 'POST' && contentType.includes('application/json')) {
+    return 'fetch'; // 现代浏览器通常使用fetch发送JSON
+  } else if (req.method === 'POST') {
+    return 'xhr'; // 传统的XMLHttpRequest
+  } else {
+    return 'xhr'; // 默认值
+  }
+}
+
 // 应用追踪专用限流
 router.use(trackingRateLimit);
 
-// 接收埋点事件（支持单个对象和数组）
+// 接收埋点事件（支持单个对象和数组，智能处理普通埋点和错误埋点）
 router.post('/events', asyncHandler(async (req, res) => {
   const isArray = Array.isArray(req.body);
   const events = isArray ? req.body : [req.body];
   
-  // 验证数据
+  // 基础数据验证（允许所有字段通过）
   if (isArray) {
     const { error } = await import('../validators/trackingValidator.js')
       .then(module => module.batchTrackingEventsSchema.validate(req.body, {
@@ -67,39 +93,71 @@ router.post('/events', asyncHandler(async (req, res) => {
       });
     }
   }
-  
-  // 标准化数据
-  const normalizedEvents = events.map(event => {
-    const normalized = normalizeTrackingData(event);
-    // 确保设置默认事件类型
-    if (!normalized.eventType) {
-      normalized.eventType = normalized.trigger || 'click';
-    }
-    return normalized;
-  });
 
-  if (normalizedEvents.length === 1) {
-    const trackingEvent = new TrackingEvent(normalizedEvents[0]);
-    await trackingEvent.save();
+  // 智能处理：根据事件类型分别处理
+  const results = [];
+  const trackingEvents = [];
+  const errorEvents = [];
+
+  for (const eventData of events) {
+    const category = eventData.category || 'default';
+    const sender = detectSender(req, eventData);
     
+    if (category === 'error') {
+      // 处理错误埋点
+      const normalizedData = normalizeErrorData(eventData);
+      normalizedData.sender = sender; // 设置检测到的sender
+      const errorLog = new ErrorLog(normalizedData);
+      await errorLog.save();
+      
+      results.push({ 
+        type: 'error', 
+        id: errorLog.id, 
+        category: errorLog.category,
+        errorType: errorLog.errorType
+      });
+      errorEvents.push(errorLog);
+    } else {
+      // 处理普通埋点
+      const normalizedData = normalizeTrackingData(eventData);
+      // 确保设置默认事件类型
+      if (!normalizedData.triggerType) {
+        normalizedData.triggerType = normalizedData.trigger || 'click';
+      }
+      // 确保category为default
+      normalizedData.category = 'default';
+      normalizedData.sender = sender; // 设置检测到的sender
+      
+      const trackingEvent = new TrackingEvent(normalizedData);
+      await trackingEvent.save();
+      
+      results.push({ 
+        type: 'tracking', 
+        id: trackingEvent.id, 
+        category: trackingEvent.category,
+        triggerType: trackingEvent.triggerType
+      });
+      trackingEvents.push(trackingEvent);
+    }
+  }
+
+  // 返回统一响应
+  if (events.length === 1) {
+    const result = results[0];
     res.status(201).json({
       success: true,
-      message: 'Event tracked successfully',
-      data: {
-        id: trackingEvent.id,
-        eventType: trackingEvent.eventType,
-        timestamp: trackingEvent.eventTimestamp
-      }
+      message: `${result.type === 'error' ? 'Error' : 'Event'} tracked successfully`,
+      data: result
     });
   } else {
-    const result = await TrackingEvent.saveBatch(normalizedEvents);
-    
     res.status(201).json({
       success: true,
-      message: 'Batch events tracked successfully',
+      message: 'Batch events processed successfully',
       data: {
-        insertedCount: result.affectedRows,
-        firstInsertId: result.insertId
+        totalProcessed: results.length,
+        trackingEvents: trackingEvents.length,
+        errorEvents: errorEvents.length,
+        results
       }
     });
   }
@@ -191,64 +249,74 @@ router.get('/events', asyncHandler(async (req, res) => {
         const data = JSON.parse(decodeURIComponent(dataStr));
         const events = Array.isArray(data) ? data : [data];
         
-        const normalizedEvents = events.map(event => {
-          const normalized = normalizeTrackingData(event);
-          // 确保设置默认事件类型
-          if (!normalized.eventType) {
-            normalized.eventType = normalized.trigger || 'click';
-          }
-          return normalized;
-        });
+        // 智能处理：根据事件类型分别处理
+        const results = [];
+        const trackingEventsList = [];
+        const errorEventsList = [];
 
-        if (normalizedEvents.length === 1) {
-          const trackingEvent = new TrackingEvent(normalizedEvents[0]);
-          await trackingEvent.save();
+        for (const eventData of events) {
+          const category = eventData.category || 'default';
+          const sender = detectSender(req, eventData);
           
-          if (isJSONPTracking) {
-            // JSONP 响应 - 不返回任何内容，避免回调函数错误
-            res.type('text/javascript').status(200).end();
-          } else {
-            // 图片追踪响应：返回1x1透明PNG图片
-            const transparentPixel = Buffer.from(
-              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-              'base64'
-            );
-            res.set({
-              'Content-Type': 'image/png',
-              'Content-Length': transparentPixel.length,
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type'
+          if (category === 'error') {
+            // 处理错误埋点
+            const normalizedData = normalizeErrorData(eventData);
+            normalizedData.sender = sender; // 设置检测到的sender
+            const errorLog = new ErrorLog(normalizedData);
+            await errorLog.save();
+            
+            results.push({ 
+              type: 'error', 
+              id: errorLog.id, 
+              category: errorLog.category,
+              errorType: errorLog.errorType
             });
-            res.send(transparentPixel);
+            errorEventsList.push(errorLog);
+          } else {
+            // 处理普通埋点
+            const normalizedData = normalizeTrackingData(eventData);
+            // 确保设置默认事件类型
+            if (!normalizedData.triggerType) {
+              normalizedData.triggerType = normalizedData.trigger || 'click';
+            }
+            // 确保category为default
+            normalizedData.category = 'default';
+            normalizedData.sender = sender; // 设置检测到的sender
+            
+            const trackingEvent = new TrackingEvent(normalizedData);
+            await trackingEvent.save();
+            
+            results.push({ 
+              type: 'tracking', 
+              id: trackingEvent.id, 
+              category: trackingEvent.category,
+              triggerType: trackingEvent.triggerType
+            });
+            trackingEventsList.push(trackingEvent);
           }
+        }
+
+        // 统一响应处理（不管是单个还是批量，都返回成功响应）
+        if (isJSONPTracking) {
+          // JSONP 响应 - 不返回任何内容，避免回调函数错误
+          res.type('text/javascript').status(200).end();
         } else {
-          const result = await TrackingEvent.saveBatch(normalizedEvents);
-          
-          if (isJSONPTracking) {
-            // JSONP 响应 - 不返回任何内容，避免回调函数错误
-            res.type('text/javascript').status(200).end();
-          } else {
-            // 图片追踪响应：返回1x1透明PNG图片
-            const transparentPixel = Buffer.from(
-              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-              'base64'
-            );
-            res.set({
-              'Content-Type': 'image/png',
-              'Content-Length': transparentPixel.length,
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type'
-            });
-            res.send(transparentPixel);
-          }
+          // 图片追踪响应：返回1x1透明PNG图片
+          const transparentPixel = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'base64'
+          );
+          res.set({
+            'Content-Type': 'image/png',
+            'Content-Length': transparentPixel.length,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          });
+          res.send(transparentPixel);
         }
       } catch (error) {
         if (isJSONPTracking) {

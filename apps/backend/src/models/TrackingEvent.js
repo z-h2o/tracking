@@ -3,82 +3,90 @@ import { query, transaction } from '../config/database.js';
 export class TrackingEvent {
   constructor(data = {}) {
     this.id = data.id;
+    
+    // 基础信息
     this.sessionId = data.session_id || data.sessionId;
     this.userId = data.user_id || data.userId;
-    this.eventType = data.event_type || data.eventType || 'click';
-    this.spm = data.spm;
-    this.pageUrl = data.page_url || data.pageUrl;
-    this.pageTitle = data.page_title || data.pageTitle;
-    this.referrer = data.referrer;
-    
-    // 元素信息
-    this.elementTag = data.element_tag || data.elementTag;
-    this.elementId = data.element_id || data.elementId;
-    this.elementClass = data.element_class || data.elementClass;
-    this.elementText = data.element_text || data.elementText;
-    this.elementAttributes = data.element_attributes || data.elementAttributes;
-    
-    // 位置信息
-    this.elementX = data.element_x || data.elementX;
-    this.elementY = data.element_y || data.elementY;
-    this.elementWidth = data.element_width || data.elementWidth;
-    this.elementHeight = data.element_height || data.elementHeight;
-    
-    // 事件信息
-    this.eventData = data.event_data || data.eventData;
-    this.triggerType = data.trigger_type || data.triggerType || 'click';
-    
-    // 浏览器信息
-    this.userAgent = data.user_agent || data.userAgent;
-    this.browserLanguage = data.browser_language || data.browserLanguage;
-    this.timezone = data.timezone;
-    this.viewportWidth = data.viewport_width || data.viewportWidth;
-    this.viewportHeight = data.viewport_height || data.viewportHeight;
-    
-    // 设备信息
-    this.deviceType = data.device_type || data.deviceType;
-    this.osName = data.os_name || data.osName;
-    this.browserName = data.browser_name || data.browserName;
-    
-    // 业务信息
     this.appVersion = data.app_version || data.appVersion;
-    this.customData = data.custom_data || data.customData;
+    this.category = data.category || 'default';
+    this.sender = data.sender || 'xhr'; // 数据上报方式：jsonp, image, xhr, fetch
     
     // 时间戳
-    this.eventTimestamp = data.event_timestamp || data.eventTimestamp;
+    this.eventTimestamp = data.event_timestamp || data.eventTimestamp || data.timestamp;
     this.createdAt = data.created_at || data.createdAt;
     this.updatedAt = data.updated_at || data.updatedAt;
+    
+    // 页面信息
+    this.pageUrl = data.page_url || data.pageUrl || data.url;
+    this.pageTitle = data.page_title || data.pageTitle || data.page?.title;
+    this.pageReferrer = data.page_referrer || data.pageReferrer || data.page?.referrer;
+    this.viewportWidth = data.viewport_width || data.viewportWidth || data.page?.viewport?.width;
+    this.viewportHeight = data.viewport_height || data.viewportHeight || data.page?.viewport?.height;
+    
+    // 用户环境信息
+    this.userAgent = data.user_agent || data.userAgent || data.user?.userAgent;
+    this.userLanguage = data.user_language || data.userLanguage || data.user?.language;
+    this.userTimezone = data.user_timezone || data.userTimezone || data.user?.timezone;
+    
+    // 事件信息
+    this.triggerType = data.trigger_type || data.triggerType || data.trigger;
+    this.spm = data.spm;
+    this.eventData = data.event_data || data.eventData;
+    
+    // 元素信息
+    this.elementTagName = data.element_tag_name || data.elementTagName || data.element?.tagName;
+    this.elementClassName = data.element_class_name || data.elementClassName || data.element?.className;
+    this.elementId = data.element_id || data.elementId || data.element?.id;
+    this.elementText = data.element_text || data.elementText || data.element?.text;
+    this.elementAttributes = data.element_attributes || data.elementAttributes || data.element?.attributes;
+    
+    // 位置信息
+    this.positionX = data.position_x || data.positionX || data.position?.x;
+    this.positionY = data.position_y || data.positionY || data.position?.y;
+    this.positionWidth = data.position_width || data.positionWidth || data.position?.width;
+    this.positionHeight = data.position_height || data.positionHeight || data.position?.height;
   }
 
   // 保存事件
   async save() {
+    // 防止错误数据被保存到tracking_events表
+    if (this.category === 'error') {
+      throw new Error('Error events should be saved to error_logs table, not tracking_events table');
+    }
+
     const sql = `
       INSERT INTO tracking_events (
-        session_id, user_id, event_type, spm, page_url, page_title, referrer,
-        element_tag, element_id, element_class, element_text, element_attributes,
-        element_x, element_y, element_width, element_height,
-        event_data, trigger_type,
-        user_agent, browser_language, timezone, viewport_width, viewport_height,
-        device_type, os_name, browser_name,
-        app_version, custom_data, event_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        session_id, user_id, app_version, category, sender,
+        event_timestamp,
+        page_url, page_title, page_referrer, viewport_width, viewport_height,
+        user_agent, user_language, user_timezone,
+        trigger_type, spm, event_data,
+        element_tag_name, element_class_name, element_id, element_text, element_attributes,
+        position_x, position_y, position_width, position_height
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 确保所有undefined值转换为null
     const toNull = (value) => value === undefined ? null : value;
     
     const params = [
-      toNull(this.sessionId), toNull(this.userId), toNull(this.eventType), toNull(this.spm), 
-      toNull(this.pageUrl), toNull(this.pageTitle), toNull(this.referrer),
-      toNull(this.elementTag), toNull(this.elementId), toNull(this.elementClass), toNull(this.elementText), 
-      this.elementAttributes ? JSON.stringify(this.elementAttributes) : null,
-      toNull(this.elementX), toNull(this.elementY), toNull(this.elementWidth), toNull(this.elementHeight),
-      this.eventData ? JSON.stringify(this.eventData) : null, toNull(this.triggerType),
-      toNull(this.userAgent), toNull(this.browserLanguage), toNull(this.timezone), 
+      // 基础信息
+      toNull(this.sessionId), toNull(this.userId), toNull(this.appVersion), toNull(this.category), toNull(this.sender),
+      // 时间戳
+      toNull(this.eventTimestamp),
+      // 页面信息
+      toNull(this.pageUrl), toNull(this.pageTitle), toNull(this.pageReferrer), 
       toNull(this.viewportWidth), toNull(this.viewportHeight),
-      toNull(this.deviceType), toNull(this.osName), toNull(this.browserName),
-      toNull(this.appVersion), this.customData ? JSON.stringify(this.customData) : null, 
-      toNull(this.eventTimestamp)
+      // 用户环境信息
+      toNull(this.userAgent), toNull(this.userLanguage), toNull(this.userTimezone),
+      // 事件信息
+      toNull(this.triggerType), toNull(this.spm), 
+      this.eventData ? JSON.stringify(this.eventData) : null,
+      // 元素信息
+      toNull(this.elementTagName), toNull(this.elementClassName), toNull(this.elementId), 
+      toNull(this.elementText), this.elementAttributes ? JSON.stringify(this.elementAttributes) : null,
+      // 位置信息
+      toNull(this.positionX), toNull(this.positionY), toNull(this.positionWidth), toNull(this.positionHeight)
     ];
 
     const result = await query(sql, params);
@@ -92,34 +100,50 @@ export class TrackingEvent {
       return [];
     }
 
+    // 过滤掉错误事件，只保存普通埋点事件
+    const trackingEvents = events.filter(event => {
+      const category = event.category || 'default';
+      return category !== 'error';
+    });
+
+    if (trackingEvents.length === 0) {
+      return { affectedRows: 0, insertId: 0 };
+    }
+
     const sql = `
       INSERT INTO tracking_events (
-        session_id, user_id, event_type, spm, page_url, page_title, referrer,
-        element_tag, element_id, element_class, element_text, element_attributes,
-        element_x, element_y, element_width, element_height,
-        event_data, trigger_type,
-        user_agent, browser_language, timezone, viewport_width, viewport_height,
-        device_type, os_name, browser_name,
-        app_version, custom_data, event_timestamp
+        session_id, user_id, app_version, category,
+        event_timestamp,
+        page_url, page_title, page_referrer, viewport_width, viewport_height,
+        user_agent, user_language, user_timezone,
+        trigger_type, spm, event_data,
+        element_tag_name, element_class_name, element_id, element_text, element_attributes,
+        position_x, position_y, position_width, position_height
       ) VALUES ?
     `;
 
-    const values = events.map(event => {
+    const values = trackingEvents.map(event => {
       const e = new TrackingEvent(event);
       const toNull = (value) => value === undefined ? null : value;
       
       return [
-        toNull(e.sessionId), toNull(e.userId), toNull(e.eventType), toNull(e.spm), 
-        toNull(e.pageUrl), toNull(e.pageTitle), toNull(e.referrer),
-        toNull(e.elementTag), toNull(e.elementId), toNull(e.elementClass), toNull(e.elementText),
-        e.elementAttributes ? JSON.stringify(e.elementAttributes) : null,
-        toNull(e.elementX), toNull(e.elementY), toNull(e.elementWidth), toNull(e.elementHeight),
-        e.eventData ? JSON.stringify(e.eventData) : null, toNull(e.triggerType),
-        toNull(e.userAgent), toNull(e.browserLanguage), toNull(e.timezone), 
+        // 基础信息
+        toNull(e.sessionId), toNull(e.userId), toNull(e.appVersion), toNull(e.category),
+        // 时间戳
+        toNull(e.eventTimestamp),
+        // 页面信息
+        toNull(e.pageUrl), toNull(e.pageTitle), toNull(e.pageReferrer), 
         toNull(e.viewportWidth), toNull(e.viewportHeight),
-        toNull(e.deviceType), toNull(e.osName), toNull(e.browserName),
-        toNull(e.appVersion), e.customData ? JSON.stringify(e.customData) : null, 
-        toNull(e.eventTimestamp)
+        // 用户环境信息
+        toNull(e.userAgent), toNull(e.userLanguage), toNull(e.userTimezone),
+        // 事件信息
+        toNull(e.triggerType), toNull(e.spm), 
+        e.eventData ? JSON.stringify(e.eventData) : null,
+        // 元素信息
+        toNull(e.elementTagName), toNull(e.elementClassName), toNull(e.elementId), 
+        toNull(e.elementText), e.elementAttributes ? JSON.stringify(e.elementAttributes) : null,
+        // 位置信息
+        toNull(e.positionX), toNull(e.positionY), toNull(e.positionWidth), toNull(e.positionHeight)
       ];
     });
 
@@ -168,11 +192,12 @@ export class TrackingEvent {
         COUNT(*) as total_events,
         COUNT(DISTINCT session_id) as unique_sessions,
         COUNT(DISTINCT user_id) as unique_users,
-        event_type
+        trigger_type
       FROM tracking_events 
       WHERE created_at BETWEEN ? AND ?
         AND spm IS NOT NULL
-      GROUP BY spm, event_type
+        AND category = 'default'
+      GROUP BY spm, trigger_type
       ORDER BY total_events DESC
     `;
     return await query(sql, [startDate, endDate]);
@@ -189,6 +214,7 @@ export class TrackingEvent {
         COUNT(DISTINCT user_id) as unique_users
       FROM tracking_events 
       WHERE created_at BETWEEN ? AND ?
+        AND category = 'default'
       GROUP BY page_url, page_title
       ORDER BY total_events DESC
     `;
@@ -204,6 +230,7 @@ export class TrackingEvent {
         COUNT(DISTINCT user_id) as active_users
       FROM tracking_events 
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+        AND category = 'default'
     `;
     const results = await query(sql, [minutes]);
     return results[0] || { total_events: 0, active_sessions: 0, active_users: 0 };
@@ -211,8 +238,8 @@ export class TrackingEvent {
 
   // 通用条件查询
   static async findByConditions(options = {}) {
-    let sql = 'SELECT * FROM tracking_events WHERE 1=1';
-    const params = [];
+    let sql = 'SELECT * FROM tracking_events WHERE category = ?';
+    const params = [options.category || 'default'];
 
     // 添加过滤条件
     if (options.startDate && options.endDate) {
@@ -220,9 +247,9 @@ export class TrackingEvent {
       params.push(options.startDate, options.endDate);
     }
 
-    if (options.eventType) {
-      sql += ' AND event_type = ?';
-      params.push(options.eventType);
+    if (options.triggerType) {
+      sql += ' AND trigger_type = ?';
+      params.push(options.triggerType);
     }
 
     if (options.spm) {
@@ -233,11 +260,6 @@ export class TrackingEvent {
     if (options.pageUrl) {
       sql += ' AND page_url LIKE ?';
       params.push(`%${options.pageUrl}%`);
-    }
-
-    if (options.deviceType) {
-      sql += ' AND device_type = ?';
-      params.push(options.deviceType);
     }
 
     if (options.sessionId) {
@@ -251,7 +273,7 @@ export class TrackingEvent {
     }
 
     // 排序（白名单验证，防止SQL注入）
-    const allowedSortBy = ['created_at', 'event_timestamp', 'id', 'event_type', 'spm'];
+    const allowedSortBy = ['created_at', 'event_timestamp', 'id', 'trigger_type', 'spm'];
     const allowedSortOrder = ['asc', 'desc'];
     
     const sortBy = allowedSortBy.includes(options.sortBy) ? options.sortBy : 'created_at';
@@ -280,11 +302,12 @@ export class TrackingEvent {
     const sql = `
       SELECT 
         DATE(created_at) as date,
-        event_type,
+        trigger_type,
         COUNT(*) as event_count
       FROM tracking_events 
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      GROUP BY DATE(created_at), event_type
+        AND category = 'default'
+      GROUP BY DATE(created_at), trigger_type
       ORDER BY date DESC, event_count DESC
     `;
     return await query(sql, [days]);

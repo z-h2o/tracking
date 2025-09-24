@@ -221,17 +221,14 @@ export class TrackingSDK {
     if (!processedData) return;
 
     // 添加通用信息
-    const trackingData = {
+    const trackingData = Object.assign(this.buildTrackingData(), {
       ...processedData,
       category: 'error',
-      page: this.getPageInfo(),
-      user: this.getUser(),
-      sessionId: this.getSessionId()
-    };
-    const errorTrackingData = this.config.dataProcessor(trackingData);
+      trigger: 'default'
+    });
 
-    this.sendImmediately(errorTrackingData);
-    this.log('warn', 'Error tracked:', errorTrackingData);
+    this.sendImmediately(trackingData);
+    this.log('warn', 'Error tracked:', trackingData);
   }
 
   // 私有方法：设置发送器
@@ -601,7 +598,8 @@ export class TrackingSDK {
       trigger: 'manual',
       eventData,
       sessionId: this.getSessionId(),
-      category: 'default'
+      category: 'default',
+      sender: this.config.sender
     };
     
     if (element) {
