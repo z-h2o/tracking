@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tracking_events (
     user_id VARCHAR(255) DEFAULT NULL COMMENT '用户ID',
     app_version VARCHAR(50) DEFAULT NULL COMMENT '应用版本号',
     category VARCHAR(50) NOT NULL DEFAULT 'default' COMMENT '埋点类别：default-普通埋点',
+    sender VARCHAR(50) NOT NULL DEFAULT 'jsonp' COMMENT '数据上报方式：jsonp, image, xhr, fetch',
     
     -- 时间戳
     event_timestamp BIGINT UNSIGNED NOT NULL COMMENT '事件时间戳(毫秒)',
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS error_logs (
     user_id VARCHAR(255) DEFAULT NULL COMMENT '用户ID',
     app_version VARCHAR(50) DEFAULT NULL COMMENT '应用版本号',
     category VARCHAR(50) NOT NULL DEFAULT 'error' COMMENT '埋点类别：error-错误埋点',
+    sender VARCHAR(50) NOT NULL DEFAULT 'jsonp' COMMENT '数据上报方式：jsonp, image, xhr, fetch',
     
     -- 时间戳
     error_timestamp BIGINT UNSIGNED NOT NULL COMMENT '错误时间戳(毫秒)',

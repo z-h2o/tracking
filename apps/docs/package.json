@@ -1,0 +1,23 @@
+{
+  "name": "@tracking-system/docs",
+  "version": "1.0.0",
+  "description": "埋点监控系统文档",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0-rc.31",
+    "vue": "^3.3.8"
+  },
+  "keywords": [
+    "tracking",
+    "analytics",
+    "monitoring",
+    "documentation"
+  ],
+  "author": "Tracking System Team",
+  "license": "MIT"
+}
